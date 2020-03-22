@@ -1,8 +1,10 @@
 import 'dart:developer' as developer;
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -47,7 +49,7 @@ class _HomePageState extends State<HomePage> {
   final Completer<WebViewController> webPlayerController =
       Completer<WebViewController>();
 
-  void uploadVideo(String path) async {
+  uploadVideo(String path) async {
     final StorageReference anim = FirebaseStorage.instance.ref().child(path);
     String url = (await anim.getDownloadURL()).toString();
     videoPlayerController = VideoPlayerController.network(url)
@@ -65,6 +67,7 @@ class _HomePageState extends State<HomePage> {
 
     const defaultUser = 'Zdh2ZOt9AOMKih2cNv00XSwk3fh1';
     String path = "/user/$defaultUser/song/";
+    print('initState');
 
     FirebaseDatabase.instance
         .reference()
@@ -90,6 +93,10 @@ class _HomePageState extends State<HomePage> {
         });
       });
     });
+
+    webPlayerController.future.then((controller) {
+      //_loadHtmlFromAssets(controller);
+    });
   }
 
   @override
@@ -98,7 +105,7 @@ class _HomePageState extends State<HomePage> {
     videoPlayerController.dispose();
   }
 
-  void _pushSaved() {
+  _pushSaved() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (BuildContext context) {
@@ -202,13 +209,13 @@ class _HomePageState extends State<HomePage> {
                 child: Visibility(
                   visible: webPlayerVisible,
                   child: WebView(
-                    initialUrl:
-                        "file:///android_asset/flutter_assets/assets/youtube.html",
+                    initialUrl: '',
                     javascriptMode: JavascriptMode.unrestricted,
                     initialMediaPlaybackPolicy:
                         AutoMediaPlaybackPolicy.always_allow,
                     onWebViewCreated: (WebViewController webViewController) {
                       webPlayerController.complete(webViewController);
+                      _loadHtmlFromAssets(webViewController);
                     },
                   ),
                 )),
@@ -240,11 +247,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void firebaseErrorLog(String message) {
+  firebaseErrorLog(String message) {
     developer.log("Firebase", name: "com.tregz.miksing", error: message);
   }
 
-  void loadVideoById(String id) {
+  loadVideoById(String id) {
     if (!webPlayerVisible) {
       setState(() {
         webPlayerVisible = true;
@@ -252,5 +259,16 @@ class _HomePageState extends State<HomePage> {
     }
     webPlayerController.future.then((WebViewController controller) =>
         controller.evaluateJavascript('loadVideoById(\'' + id + '\');'));
+  }
+
+  Future<void> _loadHtmlFromAssets(WebViewController controller) async {
+    String fileText = await rootBundle.loadString('assets/youtube.html');
+    String theURI = Uri.dataFromString(fileText,
+        mimeType: 'text/html', encoding: Encoding.getByName('utf-8'))
+        .toString();
+
+    setState(() {
+      controller.loadUrl(theURI);
+    });
   }
 }

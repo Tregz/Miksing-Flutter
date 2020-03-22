@@ -93,10 +93,6 @@ class _HomePageState extends State<HomePage> {
         });
       });
     });
-
-    webPlayerController.future.then((controller) {
-      //_loadHtmlFromAssets(controller);
-    });
   }
 
   @override
@@ -189,7 +185,6 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text('Miksing - Demo App'),
         actions: <Widget>[
-          // Add 3 lines from here...
           IconButton(icon: Icon(Icons.list), onPressed: _pushSaved),
         ],
       ),

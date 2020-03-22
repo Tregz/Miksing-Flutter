@@ -1,9 +1,10 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+import 'dart:developer' as developer;
+import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:developer' as developer;
+import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 void main() => runApp(App());
 
@@ -40,17 +41,20 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map> playlist = new List<Map>();
+  bool webPlayerVisible = false;
 
-  VideoPlayerController _controller;
+  VideoPlayerController videoPlayerController;
+  final Completer<WebViewController> webPlayerController =
+      Completer<WebViewController>();
 
   void uploadVideo(String path) async {
     final StorageReference anim = FirebaseStorage.instance.ref().child(path);
     String url = (await anim.getDownloadURL()).toString();
-    _controller = VideoPlayerController.network(url)
+    videoPlayerController = VideoPlayerController.network(url)
       ..initialize().then((_) {
         setState(() {});
-        _controller.play();
-        _controller.setLooping(true);
+        videoPlayerController.play();
+        videoPlayerController.setLooping(true);
       });
   }
 
@@ -91,7 +95,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     super.dispose();
-    _controller.dispose();
+    videoPlayerController.dispose();
   }
 
   void _pushSaved() {
@@ -119,6 +123,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
   final Set<Map> _saved = Set<Map>();
   final TextStyle _biggerFont = const TextStyle(fontSize: 18.0);
   final TextStyle _boldFont = const TextStyle(fontWeight: FontWeight.bold);
@@ -147,6 +152,8 @@ class _HomePageState extends State<HomePage> {
             _saved.remove(song);
           } else {
             _saved.add(song);
+            String id = song['id'];
+            if (id != null) loadVideoById(id);
           }
         });
       },
@@ -183,12 +190,28 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            _controller != null && _controller.value.initialized
+            videoPlayerController != null &&
+                    videoPlayerController.value.initialized
                 ? AspectRatio(
-                    aspectRatio: 16 / 9, //_controller.value.aspectRatio,
-                    child: (VideoPlayer(_controller)),
+                    aspectRatio: 16 / 9,
+                    child: VideoPlayer(videoPlayerController),
                   )
                 : Container(),
+            AspectRatio(
+                aspectRatio: 16 / 9, //_controller.value.aspectRatio,
+                child: Visibility(
+                  visible: webPlayerVisible,
+                  child: WebView(
+                    initialUrl:
+                        "file:///android_asset/flutter_assets/assets/youtube.html",
+                    javascriptMode: JavascriptMode.unrestricted,
+                    initialMediaPlaybackPolicy:
+                        AutoMediaPlaybackPolicy.always_allow,
+                    onWebViewCreated: (WebViewController webViewController) {
+                      webPlayerController.complete(webViewController);
+                    },
+                  ),
+                )),
             Text(
               'Flutter Demo',
               style: Theme.of(context).textTheme.display1,
@@ -202,14 +225,14 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            if (_controller != null)
-              _controller.value.isPlaying
-                  ? _controller.pause()
-                  : _controller.play();
+            if (videoPlayerController != null)
+              videoPlayerController.value.isPlaying
+                  ? videoPlayerController.pause()
+                  : videoPlayerController.play();
           });
         },
         child: Icon(
-          _controller != null && _controller.value.isPlaying
+          videoPlayerController != null && videoPlayerController.value.isPlaying
               ? Icons.pause
               : Icons.play_arrow,
         ),
@@ -219,5 +242,15 @@ class _HomePageState extends State<HomePage> {
 
   void firebaseErrorLog(String message) {
     developer.log("Firebase", name: "com.tregz.miksing", error: message);
+  }
+
+  void loadVideoById(String id) {
+    if (!webPlayerVisible) {
+      setState(() {
+        webPlayerVisible = true;
+      });
+    }
+    webPlayerController.future.then((WebViewController controller) =>
+        controller.evaluateJavascript('loadVideoById(\'' + id + '\');'));
   }
 }

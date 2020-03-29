@@ -23,6 +23,11 @@ const Map<int, Color> color = {
   900: Color.fromRGBO(136, 14, 79, 1),
 };
 
+class DataNotation {
+  static const String AS = "artist";
+  static const String NS = "name";
+}
+
 class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -86,13 +91,16 @@ class _HomePageState extends State<HomePage> {
             .once()
             .then((DataSnapshot snapshot) {
           Map<dynamic, dynamic> values = snapshot.value;
-          String name = values['name'];
-          if (name != null) map['name'] = name;
-          String mark = values['mark'];
-          if (mark != null) map['mark'] = mark;
+          put(map, values, DataNotation.AS);
+          put(map, values, DataNotation.NS);
         });
       });
     });
+  }
+
+  put(Map map, Map<dynamic, dynamic> values, String notation) {
+    String value = values[notation];
+    if (value != null) map[notation] = value;
   }
 
   @override
@@ -168,11 +176,11 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          song['name'],
+          song[DataNotation.NS],
           style: _biggerFont,
         ),
         Text(
-          song['mark'],
+          song[DataNotation.AS],
           style: _boldFont,
         ),
       ],
@@ -192,28 +200,34 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            videoPlayerController != null &&
-                    videoPlayerController.value.initialized
-                ? AspectRatio(
+            Container(
+              child: Stack(
+                children: [
+                  videoPlayerController != null &&
+                      videoPlayerController.value.initialized
+                      ? AspectRatio(
                     aspectRatio: 16 / 9,
                     child: VideoPlayer(videoPlayerController),
                   )
-                : Container(),
-            AspectRatio(
-                aspectRatio: 16 / 9, //_controller.value.aspectRatio,
-                child: Visibility(
-                  visible: webPlayerVisible,
-                  child: WebView(
-                    initialUrl: '',
-                    javascriptMode: JavascriptMode.unrestricted,
-                    initialMediaPlaybackPolicy:
-                        AutoMediaPlaybackPolicy.always_allow,
-                    onWebViewCreated: (WebViewController webViewController) {
-                      webPlayerController.complete(webViewController);
-                      _loadHtmlFromAssets(webViewController);
-                    },
-                  ),
-                )),
+                      : Container(),
+                  AspectRatio(
+                      aspectRatio: 16 / 9, //_controller.value.aspectRatio,
+                      child: Visibility(
+                        visible: webPlayerVisible,
+                        child: WebView(
+                          initialUrl: '',
+                          javascriptMode: JavascriptMode.unrestricted,
+                          initialMediaPlaybackPolicy:
+                          AutoMediaPlaybackPolicy.always_allow,
+                          onWebViewCreated: (WebViewController webViewController) {
+                            webPlayerController.complete(webViewController);
+                            _loadHtmlFromAssets(webViewController);
+                          },
+                        ),
+                      )),
+                ],
+              )
+            ),
             Text(
               'Flutter Demo',
               style: Theme.of(context).textTheme.display1,
